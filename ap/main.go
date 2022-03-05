@@ -34,6 +34,12 @@ type DeleteResponse struct {
 	Id string `json:"id"`
 }
 
+type Session struct {
+	ID        string
+	UserID    string
+	CreatedAt time.Time
+}
+
 // 汎用関数
 
 func createID() string {
@@ -85,6 +91,18 @@ func unzip(zipFilePath string, outputPath string) {
 		dstFile.Close()
 		fileInArchive.Close()
 	}
+}
+
+func createSession(userID string) Session {
+	var session Session
+	session.ID = createID()
+	session.UserID = userID
+	session.CreatedAt = time.Now()
+
+	DB.Create(&session)
+
+	return session
+
 }
 
 // ----------- Room Model --------------
@@ -340,6 +358,43 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 	w.Write(responseBody)
 }
 
+// Sign Up
+
+// Sign In
+func signIn(w http.ResponseWriter, r *http.Request) {
+
+	log.Println("signIn trying")
+	// 1. rからtokenを取得
+
+	// 2. tokenのvalidation (not validの場合はサインイン画面にリダイレクト)
+
+	// 3. tokenからgoogle_subを取得
+
+	// ※ 1~3簡略化: rからgoogle_sub取得
+	params := mux.Vars(r)
+	google_sub := params["google_sub"]
+
+	// google_subでUserテーブルを検索し、特定のUser構造体を取得
+	var user User
+	DB.First(&user, google_sub)
+
+	// session生成
+	session := createSession(user.ID)
+
+	// cookieを生成
+	cookie := http.Cookie{
+		Name:     "_cookie",
+		Value:    session.ID,
+		HttpOnly: true,
+	}
+
+	// cookieをクライアントに返す
+	http.SetCookie(w, &cookie)
+	http.Redirect(w, r, "/", 302)
+
+	// else{ http.Redirect(w, r, "signIn", 302) }
+}
+
 func main() {
 
 	// DB初期化
@@ -352,6 +407,7 @@ func main() {
 	DB = db
 
 	var mock_user_id string = createID()
+	var mock_session_id string = createID()
 
 	// Create "rooms" table
 	DB.AutoMigrate(&Room{})
@@ -375,6 +431,16 @@ func main() {
 		GoogleSub: "xxx",
 	})
 
+	// Create "session" table
+	DB.AutoMigrate(&Session{})
+
+	// Create Mock Data
+	DB.Create(&Session{
+		ID:        mock_session_id,
+		UserID:    mock_user_id,
+		CreatedAt: time.Now(),
+	})
+
 	// Router初期化
 	r := mux.NewRouter()
 
@@ -390,6 +456,8 @@ func main() {
 	r.HandleFunc("/api/users", createUser).Methods("POST")        //Userを作成
 	r.HandleFunc("/api/users/{id}", updateUser).Methods("PUT")    //Userをアップデート
 	r.HandleFunc("/api/users/{id}", deleteUser).Methods("DELETE") //Userを削除
+
+	r.HandleFunc("/api/signIn", signIn).Methods("GET") //tokenでsingInし、cookieを生成
 
 	log.Fatal(http.ListenAndServe(":8000", r))
 }
