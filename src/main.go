@@ -459,5 +459,5 @@ func main() {
 
 	r.HandleFunc("/api/signIn", signIn).Methods("GET") //tokenでsingInし、cookieを生成
 
-	log.Fatal(http.ListenAndServe(":8000", r))
+	log.Fatal(http.ListenAndServe(":6000", r))
 }
