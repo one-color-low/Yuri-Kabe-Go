@@ -117,6 +117,8 @@ type Room struct {
 // Get All Rooms
 func getRooms(w http.ResponseWriter, r *http.Request) {
 
+	log.Println("rooms api")
+
 	var rooms []Room
 	DB.Find(&rooms) //見つけた結果をroomsに入れよ
 
