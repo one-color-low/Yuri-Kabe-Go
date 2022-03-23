@@ -136,7 +136,8 @@ func getRoom(w http.ResponseWriter, r *http.Request) {
 
 	var room Room
 	params := mux.Vars(r)
-	DB.First(&room, params["id"])
+
+	DB.First(&room, "id = ?", params["id"])
 
 	responseBody, err := json.Marshal(room)
 
