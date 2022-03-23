@@ -114,13 +114,18 @@ type Room struct {
 	Authorized_Users string `json:"authorized_users`
 }
 
-// Get All Rooms
+// Get Rooms
 func getRooms(w http.ResponseWriter, r *http.Request) {
 
-	log.Println("rooms api")
-
 	var rooms []Room
-	DB.Find(&rooms) //見つけた結果をroomsに入れよ
+
+	var query = r.URL.Query() //クエリパラメータの取得
+
+	if query != nil && query["search_word"] != nil {
+		DB.Where("title LIKE ?", "%"+query["search_word"][0]+"%").Find(&rooms) //部分一致検索
+	} else {
+		DB.Find(&rooms) //すべて出力
+	}
 
 	responseBody, err := json.Marshal(rooms)
 	if err != nil {
@@ -448,8 +453,8 @@ func main() {
 	r := mux.NewRouter()
 
 	// Route Hnadlers / Endpoints
-	r.HandleFunc("/api/rooms", getRooms).Methods("GET")           //Roomリストを取得
-	r.HandleFunc("/api/rooms/{id}", getRoom).Methods("GET")       //一つのRoomを取得
+	r.HandleFunc("/api/rooms", getRooms).Methods("GET")           //Room情報リストを取得
+	r.HandleFunc("/api/rooms/{id}", getRoom).Methods("GET")       //一つのRoom情報を取得
 	r.HandleFunc("/api/rooms", createRoom).Methods("POST")        //Roomを作成
 	r.HandleFunc("/api/rooms/{id}", updateRoom).Methods("PUT")    //Roomをアップデート
 	r.HandleFunc("/api/rooms/{id}", deleteRoom).Methods("DELETE") //Roomを削除
