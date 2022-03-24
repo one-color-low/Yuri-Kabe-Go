@@ -121,6 +121,8 @@ func getRooms(w http.ResponseWriter, r *http.Request) {
 
 	var query = r.URL.Query() //クエリパラメータの取得
 
+	log.Println(query)
+
 	if query != nil && query["search_word"] != nil {
 		DB.Where("title LIKE ?", "%"+query["search_word"][0]+"%").Find(&rooms) //部分一致検索
 	} else {
@@ -372,7 +374,14 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 func signIn(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("signIn trying")
+
 	// 1. rからtokenを取得
+	err := r.ParseForm()
+	if err != nil {
+		log.Fatal(err)
+	}
+	id_token := r.Form.Get("credential")
+	log.Println(id_token)
 
 	// 2. tokenのvalidation (not validの場合はサインイン画面にリダイレクト)
 
@@ -465,7 +474,7 @@ func main() {
 	r.HandleFunc("/api/users/{id}", updateUser).Methods("PUT")    //Userをアップデート
 	r.HandleFunc("/api/users/{id}", deleteUser).Methods("DELETE") //Userを削除
 
-	r.HandleFunc("/api/signIn", signIn).Methods("GET") //tokenでsingInし、cookieを生成
+	r.HandleFunc("/api/signIn", signIn).Methods("POST") //Sign In With Google からtokenを受け取るエンドポイント
 
 	log.Fatal(http.ListenAndServe(":6000", r))
 }
