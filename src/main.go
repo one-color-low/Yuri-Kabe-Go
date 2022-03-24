@@ -40,6 +40,14 @@ type Session struct {
 	CreatedAt time.Time
 }
 
+type GoogleInfo struct {
+	Iss   string `json:"iss"`
+	Nbf   string `json:"nbf"`
+	Aud   string `json:"aud"`
+	Sub   string `json:"sub"`
+	Email string `json:"email"`
+}
+
 // 汎用関数
 
 func createID() string {
@@ -375,21 +383,39 @@ func signIn(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("signIn trying")
 
-	// 1. rからtokenを取得
+	// 1. rからid_tokenを取得
 	err := r.ParseForm()
 	if err != nil {
 		log.Fatal(err)
 	}
 	id_token := r.Form.Get("credential")
-	log.Println(id_token)
 
-	// 2. tokenのvalidation (not validの場合はサインイン画面にリダイレクト)
+	// 2. id_tokenのvalidation
+	url := "https://oauth2.googleapis.com/tokeninfo?id_token=" + id_token
 
-	// 3. tokenからgoogle_subを取得
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Accept", "application/json")
 
-	// ※ 1~3簡略化: rからgoogle_sub取得
-	params := mux.Vars(r)
-	google_sub := params["google_sub"]
+	client := new(http.Client)
+	resp, err := client.Do(req)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	defer resp.Body.Close()
+
+	byteArray, _ := ioutil.ReadAll(resp.Body)
+
+	google_info := GoogleInfo{}
+	err = json.Unmarshal(byteArray, &google_info)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	// 3. id_tokenからgoogle_subを取得
+	google_sub := google_info.Sub
 
 	// google_subでUserテーブルを検索し、特定のUser構造体を取得
 	var user User
@@ -409,7 +435,6 @@ func signIn(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &cookie)
 	http.Redirect(w, r, "/", 302)
 
-	// else{ http.Redirect(w, r, "signIn", 302) }
 }
 
 func main() {
