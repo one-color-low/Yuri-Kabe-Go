@@ -110,6 +110,47 @@ func createSession(userID string) Session {
 	DB.Create(&session)
 
 	return session
+}
+
+func isRegistered(id_token string) bool {
+
+	// id_tokenのvalidation
+	url := "https://oauth2.googleapis.com/tokeninfo?id_token=" + id_token
+
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Accept", "application/json")
+
+	client := new(http.Client)
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	defer resp.Body.Close()
+
+	byteArray, _ := ioutil.ReadAll(resp.Body)
+
+	google_info := GoogleInfo{}
+
+	err = json.Unmarshal(byteArray, &google_info)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	// id_tokenからgoogle_subを取得
+	google_sub := google_info.Sub
+
+	// google_subでUserテーブルを検索し、特定のUser構造体を取得
+	var user User
+	result := DB.First(&user, "google_sub = ?", google_sub)
+
+	log.Println(result.RowsAffected)
+
+	if result.RowsAffected != 0 {
+		return true
+	} else {
+		return false
+	}
 
 }
 
@@ -128,8 +169,6 @@ func getRooms(w http.ResponseWriter, r *http.Request) {
 	var rooms []Room
 
 	var query = r.URL.Query() //クエリパラメータの取得
-
-	log.Println(query)
 
 	if query != nil && query["search_word"] != nil {
 		DB.Where("title LIKE ?", "%"+query["search_word"][0]+"%").Find(&rooms) //部分一致検索
@@ -376,12 +415,8 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 	w.Write(responseBody)
 }
 
-// Sign Up
-
-// Sign In
+// Sign In -> 廃止予定(セッション作る場合の実装)
 func signIn(w http.ResponseWriter, r *http.Request) {
-
-	log.Println("signIn trying")
 
 	// 1. rからid_tokenを取得
 	err := r.ParseForm()
@@ -433,7 +468,39 @@ func signIn(w http.ResponseWriter, r *http.Request) {
 
 	// cookieをクライアントに返す
 	http.SetCookie(w, &cookie)
-	http.Redirect(w, r, "/", 302)
+	http.Redirect(w, r, "/", 200)
+
+}
+
+func registrationCheck(w http.ResponseWriter, r *http.Request) {
+
+	err := r.ParseForm()
+	if err != nil {
+		log.Fatal(err)
+	}
+	id_token := r.Form.Get("credential")
+
+	if isRegistered(id_token) {
+		http.Redirect(w, r, "/success.html", http.StatusMovedPermanently)
+	} else {
+		http.Redirect(w, r, "/register.html", http.StatusMovedPermanently)
+	}
+
+}
+
+func register(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseMultipartForm(1024 * 5)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// id_token := r.FormValue("credential")
+	// user_name := r.FormValue("user-name")
+
+	// log.Println("id-token: " + id_token)
+
+	// log.Println("user-name: " + user_name)
+
+	log.Println(r.Form)
 
 }
 
@@ -470,7 +537,7 @@ func main() {
 	DB.Create(&User{
 		ID:        mock_user_id,
 		Name:      "Yuta",
-		GoogleSub: "xxx",
+		GoogleSub: "110505856284770188621",
 	})
 
 	// Create "session" table
@@ -500,6 +567,8 @@ func main() {
 	r.HandleFunc("/api/users/{id}", deleteUser).Methods("DELETE") //Userを削除
 
 	r.HandleFunc("/api/signIn", signIn).Methods("POST") //Sign In With Google からtokenを受け取るエンドポイント
+	r.HandleFunc("/api/registrationCheck", registrationCheck).Methods("POST")
+	r.HandleFunc("/api/register", register).Methods("POST")
 
 	log.Fatal(http.ListenAndServe(":6000", r))
 }
