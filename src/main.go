@@ -49,7 +49,6 @@ type GoogleInfo struct {
 }
 
 // 汎用関数
-
 func createID() string {
 	t := time.Now()
 	entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
@@ -138,7 +137,6 @@ func getGoogleInfo(id_token string) GoogleInfo {
 	}
 
 	return google_info
-
 }
 
 func isRegistered(id_token string) bool {
@@ -156,7 +154,6 @@ func isRegistered(id_token string) bool {
 	} else {
 		return false
 	}
-
 }
 
 // ----------- Room Model --------------
@@ -474,7 +471,6 @@ func signIn(w http.ResponseWriter, r *http.Request) {
 	// cookieをクライアントに返す
 	http.SetCookie(w, &cookie)
 	http.Redirect(w, r, "/", 200)
-
 }
 
 func registrationCheck(w http.ResponseWriter, r *http.Request) {
@@ -490,7 +486,6 @@ func registrationCheck(w http.ResponseWriter, r *http.Request) {
 	} else {
 		http.Redirect(w, r, "/register.html", http.StatusMovedPermanently)
 	}
-
 }
 
 func register(w http.ResponseWriter, r *http.Request) {
@@ -500,22 +495,21 @@ func register(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
+	user_name := r.Form.Get("user-name")
 	id_token := r.Form.Get("credential")
 
 	google_info := getGoogleInfo(id_token)
-
 	google_sub := google_info.Sub
-
-	user_name := r.Form.Get("user-name")
 
 	var user User
 
+	user.ID = createID()
 	user.Name = user_name
 	user.GoogleSub = google_sub
-	user.ID = createID()
 
 	DB.Create(&user)
 
+	http.Redirect(w, r, "/success.html", http.StatusMovedPermanently)
 }
 
 func main() {
@@ -580,9 +574,9 @@ func main() {
 	r.HandleFunc("/api/users/{id}", updateUser).Methods("PUT")    //Userをアップデート
 	r.HandleFunc("/api/users/{id}", deleteUser).Methods("DELETE") //Userを削除
 
-	r.HandleFunc("/api/signIn", signIn).Methods("POST") //Sign In With Google からtokenを受け取るエンドポイント
-	r.HandleFunc("/api/registrationCheck", registrationCheck).Methods("POST")
-	r.HandleFunc("/api/register", register).Methods("POST")
+	r.HandleFunc("/api/signIn", signIn).Methods("POST")                       // -> 廃止予定
+	r.HandleFunc("/api/registrationCheck", registrationCheck).Methods("POST") // -> 残す?
+	r.HandleFunc("/api/register", register).Methods("POST")                   // -> /api/users の POST に統合予定(状況見て判断)
 
 	log.Fatal(http.ListenAndServe(":6000", r))
 }
