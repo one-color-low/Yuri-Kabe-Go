@@ -112,7 +112,7 @@ func createSession(userID string) Session {
 	return session
 }
 
-func isRegistered(id_token string) bool {
+func getGoogleInfo(id_token string) GoogleInfo {
 
 	// id_tokenのvalidation
 	url := "https://oauth2.googleapis.com/tokeninfo?id_token=" + id_token
@@ -137,14 +137,19 @@ func isRegistered(id_token string) bool {
 		fmt.Println(err.Error())
 	}
 
-	// id_tokenからgoogle_subを取得
+	return google_info
+
+}
+
+func isRegistered(id_token string) bool {
+
+	google_info := getGoogleInfo(id_token)
+
 	google_sub := google_info.Sub
 
 	// google_subでUserテーブルを検索し、特定のUser構造体を取得
 	var user User
 	result := DB.First(&user, "google_sub = ?", google_sub)
-
-	log.Println(result.RowsAffected)
 
 	if result.RowsAffected != 0 {
 		return true
@@ -489,6 +494,7 @@ func registrationCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func register(w http.ResponseWriter, r *http.Request) {
+
 	err := r.ParseMultipartForm(1024 * 5)
 	if err != nil {
 		log.Fatal(err)
@@ -496,36 +502,11 @@ func register(w http.ResponseWriter, r *http.Request) {
 
 	id_token := r.Form.Get("credential")
 
-	// id_tokenのvalidation
-	url := "https://oauth2.googleapis.com/tokeninfo?id_token=" + id_token
+	google_info := getGoogleInfo(id_token)
 
-	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Accept", "application/json")
-
-	client := new(http.Client)
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	defer resp.Body.Close()
-
-	byteArray, _ := ioutil.ReadAll(resp.Body)
-
-	google_info := GoogleInfo{}
-
-	err = json.Unmarshal(byteArray, &google_info)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-
-	// id_tokenからgoogle_subを取得
 	google_sub := google_info.Sub
 
 	user_name := r.Form.Get("user-name")
-
-	log.Println(google_sub)
-	log.Println(user_name)
 
 	var user User
 
