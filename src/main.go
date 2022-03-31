@@ -493,14 +493,47 @@ func register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// id_token := r.FormValue("credential")
-	// user_name := r.FormValue("user-name")
 
-	// log.Println("id-token: " + id_token)
+	id_token := r.Form.Get("credential")
 
-	// log.Println("user-name: " + user_name)
+	// id_tokenのvalidation
+	url := "https://oauth2.googleapis.com/tokeninfo?id_token=" + id_token
 
-	log.Println(r.Form)
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Accept", "application/json")
+
+	client := new(http.Client)
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	defer resp.Body.Close()
+
+	byteArray, _ := ioutil.ReadAll(resp.Body)
+
+	google_info := GoogleInfo{}
+
+	err = json.Unmarshal(byteArray, &google_info)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	// id_tokenからgoogle_subを取得
+	google_sub := google_info.Sub
+
+	user_name := r.Form.Get("user-name")
+
+	log.Println(google_sub)
+	log.Println(user_name)
+
+	var user User
+
+	user.Name = user_name
+	user.GoogleSub = google_sub
+	user.ID = createID()
+
+	DB.Create(&user)
 
 }
 
