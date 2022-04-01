@@ -14,9 +14,7 @@
 
         <script type="module">
 
-            var path_prefix = "/api/static/room/template_room";
-
-            console.log('/static/js/build/three.module.js')
+            var path_prefix = '/api/static/room/template_room'      
 
             import * as THREE from '/static/js/build/three.module.js';
 
@@ -37,9 +35,9 @@
 
             var clock = new THREE.Clock();
 
-            var backgroundFile = '/static/backgrounds/heya.jpg';
-            var modelFile = '/static/models/miku/miku.pmd';
-            var vmdFiles = '/static/vmds/motion.vmd'; 
+            var backgroundFile = path_prefix+'/static/backgrounds/heya.jpg';
+            var modelFile = path_prefix+'/static/models/miku/miku.pmd';
+            var vmdFiles = path_prefix+'/static/vmds/motion.vmd'; 
 
             Ammo().then(function (AmmoLib) {
 
