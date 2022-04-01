@@ -1,37 +1,32 @@
 <html>
     <head>
-        <!-- Bootstrap CSS -->
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-
-        <!-- Bootstrap icons -->
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
-
-        <!-- 追加用 CSS -->
-        <link rel="stylesheet" type="text/css" href="style.css">
+        <meta charset="utf-8">
     </head>
 
     <body>
-
-        <!-- Bootstrap JS -->
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
         
         <!-- three.js -->
-        <script src="../static/js/from_example/js/libs/ammo.js"></script>
+        <script src="/api/static/room/template_room/static/js/from_example/js/libs/ammo.js"></script>
             
-        <div id="room-area" class="col-md-8"></div>
+        <div id="room-area"></div>
 
+        <p>room</p>
 
         <script type="module">
 
-            import * as THREE from '../static/js/build/three.module.js';
+            var path_prefix = "/api/static/room/template_room";
 
-            import Stats from '../static/js/from_example/jsm/libs/stats.module.js';
-            import { GUI } from '../static/js/from_example/jsm/libs/dat.gui.module.js';
+            console.log('/static/js/build/three.module.js')
 
-            import { OrbitControls } from '../static/js/from_example/jsm/controls/OrbitControls.js';
-            import { OutlineEffect } from '../static/js/from_example/jsm/effects/OutlineEffect.js';
-            import { MMDLoader } from '../static/js/from_example/jsm/loaders/MMDLoader.js';
-            import { MMDAnimationHelper } from '../static/js/from_example/jsm/animation/MMDAnimationHelper.js';
+            import * as THREE from '/static/js/build/three.module.js';
+
+            import Stats from '/static/js/from_example/jsm/libs/stats.module.js';
+            import { GUI } from '/static/js/from_example/jsm/libs/dat.gui.module.js';
+
+            import { OrbitControls } from '/static/js/from_example/jsm/controls/OrbitControls.js';
+            import { OutlineEffect } from '/static/js/from_example/jsm/effects/OutlineEffect.js';
+            import { MMDLoader } from '/static/js/from_example/jsm/loaders/MMDLoader.js';
+            import { MMDAnimationHelper } from '/static/js/from_example/jsm/animation/MMDAnimationHelper.js';
 
             var container, stats;
 
@@ -42,13 +37,9 @@
 
             var clock = new THREE.Clock();
 
-            var backgroundFile = '../static/backgrounds/heya.jpg';
-            var modelFile = '../static/models/miku_1/miku_1.pmd';
-            var vmdFiles = '../static/vmds/wavefile.vmd'; 
-            var audioFile = '../static/sounds/edm_1.mp3';
-            console.log(audioFile)
-            var voiceFile = '../' + '{{ voice_path }}' ;
-            var audioParams = { delayTime: 160 * 1 / 30 };
+            var backgroundFile = '/static/backgrounds/heya.jpg';
+            var modelFile = '/static/models/miku/miku.pmd';
+            var vmdFiles = '/static/vmds/motion.vmd'; 
 
             Ammo().then(function (AmmoLib) {
 
@@ -62,7 +53,6 @@
 
             function init() {
 
-                // container = document.createElement('div');
                 container = document.getElementById('room-area');
                 document.body.appendChild(container);
 
@@ -135,16 +125,6 @@
                 });
 
                 var loader = new MMDLoader();
-
-                new THREE.AudioLoader().load(voiceFile, function (buffer) {
-                    var listener = new THREE.AudioListener();
-                    var voice = new THREE.Audio(listener).setBuffer(buffer);
-                    listener.position.z = 1;
-                    helper.add(voice, audioParams);
-                    scene.add(voice);
-                    scene.add(listener);
-                    ready = true;
-                }, onProgress, null);
 
                 loader.loadWithAnimation(modelFile, vmdFiles, function (mmd) {
 
