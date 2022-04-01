@@ -512,6 +512,11 @@ func register(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/success.html", http.StatusMovedPermanently)
 }
 
+func upload(w http.ResponseWriter, r *http.Request) {
+	room_id := createID()
+	log.Println(room_id)
+}
+
 func main() {
 
 	// DB初期化
@@ -577,6 +582,15 @@ func main() {
 	r.HandleFunc("/api/signIn", signIn).Methods("POST")                       // -> 廃止予定
 	r.HandleFunc("/api/registrationCheck", registrationCheck).Methods("POST") // -> 残す?
 	r.HandleFunc("/api/register", register).Methods("POST")                   // -> /api/users の POST に統合予定(状況見て判断)
+	r.HandleFunc("/api/upload", upload).Methods("POST")
+
+	// Staticファイルへのルーティング
+	r.Handle("/api/static/room/", http.StripPrefix("/api/static/room", http.FileServer(http.Dir("uploads"))))
+	//r.Handle("/api/static/room/", http.FileServer(http.Dir("uploads"))) // -> これだと、uploads/api/static/room/ にルーティングされてしまう
+
+	// これがないとuploads/xxx.htmlとかにアクセスできない(謎)
+	r.NotFoundHandler = http.StripPrefix("/api/static/room", http.FileServer(http.Dir("uploads")))
 
 	log.Fatal(http.ListenAndServe(":6000", r))
+
 }
