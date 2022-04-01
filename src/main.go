@@ -25,6 +25,8 @@ import (
 	"archive/zip"
 	"path/filepath"
 	"strings"
+
+	cp "github.com/otiai10/copy"
 )
 
 // グローバル変数なDB
@@ -167,6 +169,8 @@ type Room struct {
 
 // Get Rooms
 func getRooms(w http.ResponseWriter, r *http.Request) {
+
+	log.Println("getRooms")
 
 	var rooms []Room
 
@@ -490,6 +494,8 @@ func registrationCheck(w http.ResponseWriter, r *http.Request) {
 
 func register(w http.ResponseWriter, r *http.Request) {
 
+	log.Println("register")
+
 	err := r.ParseMultipartForm(1024 * 5)
 	if err != nil {
 		log.Fatal(err)
@@ -515,6 +521,12 @@ func register(w http.ResponseWriter, r *http.Request) {
 func upload(w http.ResponseWriter, r *http.Request) {
 	room_id := createID()
 	log.Println(room_id)
+
+	err := cp.Copy("uploads/template_room", "uploads/"+room_id)
+	fmt.Println(err) // nil
+
+	http.Redirect(w, r, "/success.html", http.StatusMovedPermanently)
+
 }
 
 func main() {
@@ -582,7 +594,8 @@ func main() {
 	r.HandleFunc("/api/signIn", signIn).Methods("POST")                       // -> 廃止予定
 	r.HandleFunc("/api/registrationCheck", registrationCheck).Methods("POST") // -> 残す?
 	r.HandleFunc("/api/register", register).Methods("POST")                   // -> /api/users の POST に統合予定(状況見て判断)
-	r.HandleFunc("/api/upload", upload).Methods("POST")
+
+	r.HandleFunc("/api/upload", upload).Methods("GET")
 
 	// 静的ファイルへのルーティング
 	r.Handle("/api/static/room/", http.StripPrefix("/api/static/room", http.FileServer(http.Dir("uploads"))))

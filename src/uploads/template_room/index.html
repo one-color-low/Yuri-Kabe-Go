@@ -1,0 +1,300 @@
+<html>
+    <head>
+        <!-- Bootstrap CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+
+        <!-- Bootstrap icons -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
+
+        <!-- 追加用 CSS -->
+        <link rel="stylesheet" type="text/css" href="style.css">
+    </head>
+
+    <body>
+
+        <!-- Bootstrap JS -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+        
+        <!-- three.js -->
+        <script src="../static/js/from_example/js/libs/ammo.js"></script>
+            
+        <div id="room-area" class="col-md-8"></div>
+
+
+        <script type="module">
+
+            import * as THREE from '../static/js/build/three.module.js';
+
+            import Stats from '../static/js/from_example/jsm/libs/stats.module.js';
+            import { GUI } from '../static/js/from_example/jsm/libs/dat.gui.module.js';
+
+            import { OrbitControls } from '../static/js/from_example/jsm/controls/OrbitControls.js';
+            import { OutlineEffect } from '../static/js/from_example/jsm/effects/OutlineEffect.js';
+            import { MMDLoader } from '../static/js/from_example/jsm/loaders/MMDLoader.js';
+            import { MMDAnimationHelper } from '../static/js/from_example/jsm/animation/MMDAnimationHelper.js';
+
+            var container, stats;
+
+            var mesh, camera, scene, renderer, effect;
+            var helper, ikHelper, physicsHelper;
+
+            var ready = false;
+
+            var clock = new THREE.Clock();
+
+            var backgroundFile = '../static/backgrounds/heya.jpg';
+            var modelFile = '../static/models/miku_1/miku_1.pmd';
+            var vmdFiles = '../static/vmds/wavefile.vmd'; 
+            var audioFile = '../static/sounds/edm_1.mp3';
+            console.log(audioFile)
+            var voiceFile = '../' + '{{ voice_path }}' ;
+            var audioParams = { delayTime: 160 * 1 / 30 };
+
+            Ammo().then(function (AmmoLib) {
+
+                Ammo = AmmoLib;
+
+                init();
+                animate();
+
+            });
+
+
+            function init() {
+
+                // container = document.createElement('div');
+                container = document.getElementById('room-area');
+                document.body.appendChild(container);
+
+                camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
+                camera.position.z = 30;
+
+                // scene
+
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0xffffff);
+
+                var gridHelper = new THREE.PolarGridHelper(30, 10);
+                gridHelper.position.y = - 10;
+                scene.add(gridHelper);
+
+                var ambient = new THREE.AmbientLight(0x666666, 1.5);
+                scene.add(ambient);
+
+                var directionalLight = new THREE.DirectionalLight(0x887766, 1);
+                directionalLight.position.set(- 1, 1, 1).normalize();
+                scene.add(directionalLight);
+
+                // 背景画像を読み込む
+                const textureLoader = new THREE.TextureLoader();
+                const texture = textureLoader.load(backgroundFile);
+
+                // 反射の強いマテリアルにする
+                const material = new THREE.MeshPhongMaterial({
+                    map: texture
+                });
+                const geometry = new THREE.BoxGeometry(100, 80, 1)
+                // 背景メッシュを作成
+                const background_mesh = new THREE.Mesh(geometry, material);
+                background_mesh.position.z = -15
+                background_mesh.position.y = +10
+                // 3D空間に背景メッシュを追加
+                scene.add(background_mesh);
+
+
+                //
+
+                renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setPixelRatio(window.devicePixelRatio);
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                container.appendChild(renderer.domElement);
+
+                effect = new OutlineEffect(renderer);
+
+                // STATS
+
+                stats = new Stats();
+                container.appendChild(stats.dom);
+
+                // model
+
+                function onProgress(xhr) {
+
+                    if (xhr.lengthComputable) {
+
+                        var percentComplete = xhr.loaded / xhr.total * 100;
+                        console.log(Math.round(percentComplete, 2) + '% downloaded');
+
+                    }
+
+                }
+
+
+                helper = new MMDAnimationHelper({
+                    afterglow: 2.0
+                });
+
+                var loader = new MMDLoader();
+
+                new THREE.AudioLoader().load(voiceFile, function (buffer) {
+                    var listener = new THREE.AudioListener();
+                    var voice = new THREE.Audio(listener).setBuffer(buffer);
+                    listener.position.z = 1;
+                    helper.add(voice, audioParams);
+                    scene.add(voice);
+                    scene.add(listener);
+                    ready = true;
+                }, onProgress, null);
+
+                loader.loadWithAnimation(modelFile, vmdFiles, function (mmd) {
+
+                    mesh = mmd.mesh;
+                    mesh.position.y = - 10;
+                    scene.add(mesh);
+
+                    helper.add(mesh, {
+                        animation: mmd.animation,
+                        physics: false
+                    });
+
+                    ikHelper = helper.objects.get(mesh).ikSolver.createHelper();
+                    ikHelper.visible = false;
+                    scene.add(ikHelper);
+
+                    physicsHelper = helper.objects.get(mesh).physics.createHelper();
+                    physicsHelper.visible = false;
+                    scene.add(physicsHelper);
+
+                    initGui();
+
+                }, onProgress, null);
+
+                var controls = new OrbitControls(camera, renderer.domElement);
+
+                window.addEventListener('resize', onWindowResize, false);
+
+                var phongMaterials;
+                var originalMaterials;
+
+                function makePhongMaterials(materials) {
+
+                    var array = [];
+
+                    for (var i = 0, il = materials.length; i < il; i++) {
+
+                        var m = new THREE.MeshPhongMaterial();
+                        m.copy(materials[i]);
+                        m.needsUpdate = true;
+
+                        array.push(m);
+
+                    }
+
+                    phongMaterials = array;
+
+                }
+
+                function initGui() {
+
+                    var api = {
+                        'animation': true,
+                        'gradient mapping': true,
+                        'ik': true,
+                        'outline': true,
+                        'physics': true,
+                        'show IK bones': false,
+                        'show rigid bodies': false
+                    };
+
+                    var gui = new GUI();
+
+                    gui.add(api, 'animation').onChange(function () {
+
+                        helper.enable('animation', api['animation']);
+
+                    });
+
+                    gui.add(api, 'gradient mapping').onChange(function () {
+
+                        if (originalMaterials === undefined) originalMaterials = mesh.material;
+                        if (phongMaterials === undefined) makePhongMaterials(mesh.material);
+
+                        if (api['gradient mapping']) {
+
+                            mesh.material = originalMaterials;
+
+                        } else {
+
+                            mesh.material = phongMaterials;
+
+                        }
+
+                    });
+
+                    gui.add(api, 'ik').onChange(function () {
+
+                        helper.enable('ik', api['ik']);
+
+                    });
+
+                    gui.add(api, 'outline').onChange(function () {
+
+                        effect.enabled = api['outline'];
+
+                    });
+
+                    gui.add(api, 'physics').onChange(function () {
+
+                        helper.enable('physics', api['physics']);
+
+                    });
+
+                    gui.add(api, 'show IK bones').onChange(function () {
+
+                        ikHelper.visible = api['show IK bones'];
+
+                    });
+
+                    gui.add(api, 'show rigid bodies').onChange(function () {
+
+                        if (physicsHelper !== undefined) physicsHelper.visible = api['show rigid bodies'];
+
+                    });
+
+                }
+
+            }
+
+            function onWindowResize() {
+
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+
+                effect.setSize(window.innerWidth, window.innerHeight);
+
+            }
+
+            //
+
+            function animate() {
+
+                requestAnimationFrame(animate);
+
+                stats.begin();
+                render();
+                stats.end();
+
+            }
+
+            function render() {
+
+                helper.update(clock.getDelta());
+                effect.render(scene, camera);
+
+            }
+
+        </script>
+
+    </body>
+
+</html>
