@@ -584,11 +584,8 @@ func main() {
 	r.HandleFunc("/api/register", register).Methods("POST")                   // -> /api/users の POST に統合予定(状況見て判断)
 	r.HandleFunc("/api/upload", upload).Methods("POST")
 
-	// Staticファイルへのルーティング
+	// 静的ファイルへのルーティング
 	r.Handle("/api/static/room/", http.StripPrefix("/api/static/room", http.FileServer(http.Dir("uploads"))))
-	//r.Handle("/api/static/room/", http.FileServer(http.Dir("uploads"))) // -> これだと、uploads/api/static/room/ にルーティングされてしまう
-
-	// これがないとuploads/xxx.htmlとかにアクセスできない(謎)
 	r.NotFoundHandler = http.StripPrefix("/api/static/room", http.FileServer(http.Dir("uploads")))
 
 	log.Fatal(http.ListenAndServe(":6000", r))
