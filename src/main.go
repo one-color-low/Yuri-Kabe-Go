@@ -158,6 +158,13 @@ func isRegistered(id_token string) bool {
 	}
 }
 
+func extractExt(name string) string {
+	pos := strings.LastIndex(name, ".")
+
+	// .から後ろをスライスで取得
+	return name[pos:]
+}
+
 // ----------- Room Model --------------
 type Room struct {
 	ID               string `json:"id"`
@@ -531,7 +538,13 @@ func upload(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	uploadedFileName := fileHeader.Filename
-	log.Println(uploadedFileName) //これがなぜか表示されない
+	log.Println(uploadedFileName)
+
+	ext := extractExt(uploadedFileName)
+	if ext != ".vmd" {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	room_id := createID()
 	log.Println(room_id)
@@ -555,9 +568,10 @@ func upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(err) // nil
+	log.Println("upload ok")
 
-	http.Redirect(w, r, "/success.html", http.StatusMovedPermanently)
+	redirect_url := "/detail.html?room_id=" + room_id
+	http.Redirect(w, r, redirect_url, http.StatusMovedPermanently)
 
 }
 
