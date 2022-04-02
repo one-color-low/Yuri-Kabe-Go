@@ -170,8 +170,8 @@ type Room struct {
 	ID               string `json:"id"`
 	Title            string `json:"title"`
 	Author           string `json:"author"`
-	Description      string `json:"description`
-	Authorized_Users string `json:"authorized_users`
+	Description      string `json:"description"`
+	Authorized_Users string `json:"authorized_users"`
 }
 
 // Get Rooms
@@ -201,10 +201,14 @@ func getRooms(w http.ResponseWriter, r *http.Request) {
 // Get Single Room
 func getRoom(w http.ResponseWriter, r *http.Request) {
 
+	log.Println("getRoom")
+
 	var room Room
 	params := mux.Vars(r)
 
 	DB.First(&room, "id = ?", params["id"])
+
+	log.Println(room.Description)
 
 	responseBody, err := json.Marshal(room)
 
@@ -552,7 +556,7 @@ func main() {
 
 	// Create Mock Data
 	DB.Create(&Room{
-		ID:               createID(),
+		ID:               "template_room",
 		Title:            "Room one",
 		Author:           mock_user_id,
 		Description:      "This is mock data.",
