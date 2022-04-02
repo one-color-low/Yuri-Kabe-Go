@@ -519,10 +519,42 @@ func register(w http.ResponseWriter, r *http.Request) {
 }
 
 func upload(w http.ResponseWriter, r *http.Request) {
+
+	log.Println("upload")
+
+	file, fileHeader, err := r.FormFile("file-input")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	defer file.Close()
+
+	uploadedFileName := fileHeader.Filename
+	log.Println(uploadedFileName) //これがなぜか表示されない
+
 	room_id := createID()
 	log.Println(room_id)
 
-	err := cp.Copy("uploads/template_room", "uploads/"+room_id)
+	err = cp.Copy("uploads/template_room", "uploads/"+room_id)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	dst, err := os.Create(fmt.Sprintf("./uploads/%s/static/vmds/motion.vmd", room_id))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	_, err = io.Copy(dst, file)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	fmt.Println(err) // nil
 
 	http.Redirect(w, r, "/success.html", http.StatusMovedPermanently)
@@ -595,7 +627,7 @@ func main() {
 	r.HandleFunc("/api/registrationCheck", registrationCheck).Methods("POST") // -> 残す?
 	r.HandleFunc("/api/register", register).Methods("POST")                   // -> /api/users の POST に統合予定(状況見て判断)
 
-	r.HandleFunc("/api/upload", upload).Methods("GET")
+	r.HandleFunc("/api/upload", upload).Methods("POST")
 
 	// 静的ファイルへのルーティング
 	r.Handle("/api/static/room/", http.StripPrefix("/api/static/room", http.FileServer(http.Dir("uploads"))))

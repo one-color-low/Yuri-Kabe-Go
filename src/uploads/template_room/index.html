@@ -1,6 +1,12 @@
 <html>
     <head>
         <meta charset="utf-8">
+        <script>
+            // ルームidの取得
+            var self_url = location.href
+            var self_urls = self_url.split('/')
+            var room_id = self_urls.slice(-2)[0]
+        </script>
     </head>
 
     <body>
@@ -14,7 +20,7 @@
 
         <script type="module">
 
-            var path_prefix = '/api/static/room/template_room'      
+            var path_prefix = '/api/static/room/'+room_id      
 
             import * as THREE from '/static/js/build/three.module.js';
 
@@ -35,7 +41,7 @@
 
             var clock = new THREE.Clock();
 
-            var backgroundFile = path_prefix+'/static/backgrounds/heya.jpg';
+            var backgroundFile = path_prefix+'/static/backgrounds/mori.jpg';
             var modelFile = path_prefix+'/static/models/miku/miku.pmd';
             var vmdFiles = path_prefix+'/static/vmds/motion.vmd'; 
 
