@@ -219,65 +219,23 @@ func getRoom(w http.ResponseWriter, r *http.Request) {
 // Create a Room
 func createRoom(w http.ResponseWriter, r *http.Request) {
 
-	// Create ID
-	var id string = createID()
+	log.Println("create")
 
-	// Save file
-	file, fileHeader, err := r.FormFile("file_input")
+	err := r.ParseMultipartForm(1024 * 5)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		log.Fatal(err)
 	}
-
-	defer file.Close()
-
-	uploadedFileName := fileHeader.Filename
-	log.Println(uploadedFileName)
-
-	err = os.MkdirAll("./uploads", os.ModePerm)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	dst, err := os.Create(fmt.Sprintf("./uploads/%s.zip", id))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	defer dst.Close()
-
-	_, err = io.Copy(dst, file)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// unzip
-	unzip(fmt.Sprintf("./uploads/%s.zip", id), "output")
-
-	// Save info
-	info := r.FormValue("info_input")
 
 	var room Room
 
-	if err := json.Unmarshal([]byte(info), &room); err != nil {
-		log.Fatal(err)
-	}
-
-	// todo: 認証実装し次第、room.Author はgoogle_subから検索したuserのidにするように
-	room.ID = id
+	room.ID = r.Form.Get("room-id")
+	room.Title = r.Form.Get("input-title")
+	room.Description = r.Form.Get("input-description")
+	//todo: ここにAuthorも
 
 	DB.Create(&room)
 
-	responseBody, err := json.Marshal(room)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write((responseBody))
+	http.Redirect(w, r, "/success.html", http.StatusMovedPermanently)
 }
 
 // Update a Room
