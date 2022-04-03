@@ -141,15 +141,34 @@ func getGoogleInfo(id_token string) GoogleInfo {
 	return google_info
 }
 
-func isRegistered(id_token string) bool {
+func isRegisteredGoogleSub(google_sub string) bool {
 
-	google_info := getGoogleInfo(id_token)
-
-	google_sub := google_info.Sub
-
-	// google_subでUserテーブルを検索し、特定のUser構造体を取得
 	var user User
 	result := DB.First(&user, "google_sub = ?", google_sub)
+
+	if result.RowsAffected != 0 {
+		return true
+	} else {
+		return false
+	}
+}
+
+func isRegisteredUserId(user_id string) bool {
+
+	var user User
+	result := DB.First(&user, "id = ?", user_id)
+
+	if result.RowsAffected != 0 {
+		return true
+	} else {
+		return false
+	}
+}
+
+func isRegisteredRoomId(room_id string) bool {
+
+	var room Room
+	result := DB.First(&room, "id = ?", room_id)
 
 	if result.RowsAffected != 0 {
 		return true
@@ -230,12 +249,27 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
+	id_token := r.Form.Get("credential")
+	log.Println(id_token)
+
+	google_info := getGoogleInfo(id_token)
+	google_sub := google_info.Sub
+
+	// google_subでUserテーブルを検索し、特定のUser構造体を取得
+	var user User
+	result := DB.First(&user, "google_sub = ?", google_sub)
+
+	// 登録ユーザーがいなかった場合
+	if result.RowsAffected == 0 {
+		log.Fatal()
+	}
+
 	var room Room
 
 	room.ID = r.Form.Get("room-id")
 	room.Title = r.Form.Get("input-title")
 	room.Description = r.Form.Get("input-description")
-	//todo: ここにAuthorも
+	room.Author = user.ID
 
 	DB.Create(&room)
 
@@ -310,9 +344,11 @@ func getUsers(w http.ResponseWriter, r *http.Request) {
 // Get Single User
 func getUser(w http.ResponseWriter, r *http.Request) {
 
+	log.Println("getUser")
+
 	var user User
 	params := mux.Vars(r)
-	DB.First(&user, params["id"])
+	DB.First(&user, "id = ?", params["id"])
 
 	responseBody, err := json.Marshal(user)
 
@@ -454,7 +490,10 @@ func registrationCheck(w http.ResponseWriter, r *http.Request) {
 	}
 	id_token := r.Form.Get("credential")
 
-	if isRegistered(id_token) {
+	google_info := getGoogleInfo(id_token)
+	google_sub := google_info.Sub
+
+	if isRegisteredGoogleSub(google_sub) {
 		http.Redirect(w, r, "/success.html", http.StatusMovedPermanently)
 	} else {
 		http.Redirect(w, r, "/register.html", http.StatusMovedPermanently)
@@ -548,30 +587,35 @@ func main() {
 
 	DB = db
 
-	var mock_user_id string = createID()
+	var mock_room_id = "template_room"
+	var mock_user_id = "mock_user_id"
 	var mock_session_id string = createID()
 
 	// Create "rooms" table
 	DB.AutoMigrate(&Room{})
 
 	// Create Mock Data
-	DB.Create(&Room{
-		ID:               "template_room",
-		Title:            "Room one",
-		Author:           mock_user_id,
-		Description:      "This is mock data.",
-		Authorized_Users: "'1', '2', '3'",
-	})
+	if !isRegisteredRoomId(mock_room_id) {
+		DB.Create(&Room{
+			ID:               mock_room_id,
+			Title:            "Room one",
+			Author:           mock_user_id,
+			Description:      "This is mock data.",
+			Authorized_Users: "'1', '2', '3'",
+		})
+	}
 
 	// Create "users" table
 	DB.AutoMigrate(&User{})
 
 	// Create Mock Data
-	DB.Create(&User{
-		ID:        mock_user_id,
-		Name:      "Yuta",
-		GoogleSub: "110505856284770188621",
-	})
+	if !isRegisteredUserId(mock_user_id) {
+		DB.Create(&User{
+			ID:        mock_user_id,
+			Name:      "Yuta",
+			GoogleSub: "110505856284770188621",
+		})
+	}
 
 	// Create "session" table
 	DB.AutoMigrate(&Session{})
