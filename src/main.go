@@ -426,64 +426,15 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 	w.Write(responseBody)
 }
 
-// Sign In -> 廃止予定(セッション作る場合の実装)
+// Sign In
+// tokenから登録判定し、
+// 1. 登録されていればセッション作成＆success.htmlにリダイレクト
+// 2. 登録されていなければregister.htmlにリダイレクト
 func signIn(w http.ResponseWriter, r *http.Request) {
 
-	// 1. rからid_tokenを取得
-	err := r.ParseForm()
-	if err != nil {
-		log.Fatal(err)
-	}
-	id_token := r.Form.Get("credential")
+	log.Println("Sign In")
 
-	// 2. id_tokenのvalidation
-	url := "https://oauth2.googleapis.com/tokeninfo?id_token=" + id_token
-
-	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Accept", "application/json")
-
-	client := new(http.Client)
-	resp, err := client.Do(req)
-
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	defer resp.Body.Close()
-
-	byteArray, _ := ioutil.ReadAll(resp.Body)
-
-	google_info := GoogleInfo{}
-	err = json.Unmarshal(byteArray, &google_info)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-
-	// 3. id_tokenからgoogle_subを取得
-	google_sub := google_info.Sub
-
-	// google_subでUserテーブルを検索し、特定のUser構造体を取得
-	var user User
-	DB.First(&user, google_sub)
-
-	// session生成
-	session := createSession(user.ID)
-
-	// cookieを生成
-	cookie := http.Cookie{
-		Name:     "_cookie",
-		Value:    session.ID,
-		HttpOnly: true,
-	}
-
-	// cookieをクライアントに返す
-	http.SetCookie(w, &cookie)
-	http.Redirect(w, r, "/", 200)
-}
-
-func registrationCheck(w http.ResponseWriter, r *http.Request) {
-
+	// tokenからgoogle sub取得
 	err := r.ParseForm()
 	if err != nil {
 		log.Fatal(err)
@@ -494,10 +445,29 @@ func registrationCheck(w http.ResponseWriter, r *http.Request) {
 	google_sub := google_info.Sub
 
 	if isRegisteredGoogleSub(google_sub) {
+		var user User
+		DB.First(&user, "google_sub = ?", google_sub)
+
+		// session生成
+		session := createSession(user.ID)
+
+		// cookieを生成
+		cookie := http.Cookie{
+			Name:     "_cookie",
+			Value:    session.ID,
+			HttpOnly: true,
+		}
+
+		// cookieをレスポンスに入れる
+		http.SetCookie(w, &cookie)
 		http.Redirect(w, r, "/success.html", http.StatusMovedPermanently)
+
 	} else {
+
 		http.Redirect(w, r, "/register.html", http.StatusMovedPermanently)
+
 	}
+
 }
 
 func register(w http.ResponseWriter, r *http.Request) {
@@ -643,9 +613,8 @@ func main() {
 	r.HandleFunc("/api/users/{id}", updateUser).Methods("PUT")    //Userをアップデート
 	r.HandleFunc("/api/users/{id}", deleteUser).Methods("DELETE") //Userを削除
 
-	r.HandleFunc("/api/signIn", signIn).Methods("POST")                       // -> 廃止予定
-	r.HandleFunc("/api/registrationCheck", registrationCheck).Methods("POST") // -> 残す?
-	r.HandleFunc("/api/register", register).Methods("POST")                   // -> /api/users の POST に統合予定(状況見て判断)
+	r.HandleFunc("/api/signIn", signIn).Methods("POST")     // -> 廃止予定 -> 廃止せず、registrationCheckを統合
+	r.HandleFunc("/api/register", register).Methods("POST") // -> /api/users の POST に統合予定(状況見て判断)
 
 	r.HandleFunc("/api/upload", upload).Methods("POST")
 
