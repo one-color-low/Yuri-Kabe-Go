@@ -113,7 +113,7 @@ func createSession(userID string) Session {
 	return session
 }
 
-func getGoogleInfo(id_token string) GoogleInfo {
+func getGoogleInfo(id_token string) (*GoogleInfo, error) {
 
 	// id_tokenのvalidation
 	url := "https://oauth2.googleapis.com/tokeninfo?id_token=" + id_token
@@ -125,20 +125,22 @@ func getGoogleInfo(id_token string) GoogleInfo {
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println(err)
+		return nil, err
 	}
 
 	defer resp.Body.Close()
 
 	byteArray, _ := ioutil.ReadAll(resp.Body)
 
-	google_info := GoogleInfo{}
+	google_info := &GoogleInfo{} //ポインタ型のGoogleInfo
 
 	err = json.Unmarshal(byteArray, &google_info)
 	if err != nil {
 		fmt.Println(err.Error())
+		return nil, err
 	}
 
-	return google_info
+	return google_info, nil
 }
 
 func isRegisteredGoogleSub(google_sub string) bool {
@@ -210,7 +212,8 @@ func getRooms(w http.ResponseWriter, r *http.Request) {
 
 	responseBody, err := json.Marshal(rooms)
 	if err != nil {
-		log.Fatal(err)
+		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -232,7 +235,8 @@ func getRoom(w http.ResponseWriter, r *http.Request) {
 	responseBody, err := json.Marshal(room)
 
 	if err != nil {
-		log.Fatal(err)
+		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -246,13 +250,17 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 
 	err := r.ParseMultipartForm(1024 * 5)
 	if err != nil {
-		log.Fatal(err)
+		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		return
 	}
 
 	id_token := r.Form.Get("credential")
-	log.Println(id_token)
 
-	google_info := getGoogleInfo(id_token)
+	google_info, err := getGoogleInfo(id_token)
+	if err != nil {
+		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		return
+	}
 	google_sub := google_info.Sub
 
 	// google_subでUserテーブルを検索し、特定のUser構造体を取得
@@ -261,7 +269,8 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 
 	// 登録ユーザーがいなかった場合
 	if result.RowsAffected == 0 {
-		log.Fatal()
+		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		return
 	}
 
 	var room Room
@@ -285,7 +294,8 @@ func updateRoom(w http.ResponseWriter, r *http.Request) {
 
 	var room Room
 	if err := json.Unmarshal(reqBody, &room); err != nil {
-		log.Fatal(err)
+		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		return
 	}
 
 	DB.Model(&room).Where("id = ?", id).Updates(
@@ -296,7 +306,8 @@ func updateRoom(w http.ResponseWriter, r *http.Request) {
 
 	responseBody, err := json.Marshal(room)
 	if err != nil {
-		log.Fatal(err)
+		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -312,7 +323,8 @@ func deleteRoom(w http.ResponseWriter, r *http.Request) {
 
 	responseBody, err := json.Marshal(DeleteResponse{Id: id})
 	if err != nil {
-		log.Fatal(err)
+		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -334,7 +346,8 @@ func getUsers(w http.ResponseWriter, r *http.Request) {
 
 	responseBody, err := json.Marshal(users)
 	if err != nil {
-		log.Fatal(err)
+		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -353,7 +366,8 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 	responseBody, err := json.Marshal(user)
 
 	if err != nil {
-		log.Fatal(err)
+		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -369,14 +383,16 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 
 	// reqBodyがUserの構造体フォーマットになっていない場合はエラーを返す
 	if err := json.Unmarshal(reqBody, &user); err != nil {
-		log.Fatal(err)
+		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		return
 	}
 
 	DB.Create(&user)
 
 	responseBody, err := json.Marshal(user)
 	if err != nil {
-		log.Fatal(err)
+		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -392,7 +408,8 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 
 	var user User
 	if err := json.Unmarshal(reqBody, &user); err != nil {
-		log.Fatal(err)
+		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		return
 	}
 
 	DB.Model(&user).Where("id = ?", id).Updates(
@@ -403,7 +420,8 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 
 	responseBody, err := json.Marshal(user)
 	if err != nil {
-		log.Fatal(err)
+		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -419,14 +437,15 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 
 	responseBody, err := json.Marshal(DeleteResponse{Id: id})
 	if err != nil {
-		log.Fatal(err)
+		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(responseBody)
 }
 
-// Sign In
+// Sign In -> 名前loginに変更？
 // tokenから登録判定し、
 // 1. 登録されていればセッション作成＆success.htmlにリダイレクト
 // 2. 登録されていなければregister.htmlにリダイレクト
@@ -437,11 +456,12 @@ func signIn(w http.ResponseWriter, r *http.Request) {
 	// tokenからgoogle sub取得
 	err := r.ParseForm()
 	if err != nil {
-		log.Fatal(err)
+		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		return
 	}
 	id_token := r.Form.Get("credential")
 
-	google_info := getGoogleInfo(id_token)
+	google_info, _ := getGoogleInfo(id_token)
 	google_sub := google_info.Sub
 
 	if isRegisteredGoogleSub(google_sub) {
@@ -467,7 +487,6 @@ func signIn(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/register.html", http.StatusMovedPermanently)
 
 	}
-
 }
 
 func register(w http.ResponseWriter, r *http.Request) {
@@ -476,13 +495,14 @@ func register(w http.ResponseWriter, r *http.Request) {
 
 	err := r.ParseMultipartForm(1024 * 5)
 	if err != nil {
-		log.Fatal(err)
+		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		return
 	}
 
 	user_name := r.Form.Get("user-name")
 	id_token := r.Form.Get("credential")
 
-	google_info := getGoogleInfo(id_token)
+	google_info, _ := getGoogleInfo(id_token)
 	google_sub := google_info.Sub
 
 	var user User
@@ -547,6 +567,8 @@ func upload(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+
+	log.Println("Go is runnning")
 
 	// DB初期化
 	db, err := gorm.Open(sqlite.Open("yuri-kabe.db"), &gorm.Config{})
