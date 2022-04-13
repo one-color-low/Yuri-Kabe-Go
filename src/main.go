@@ -32,6 +32,23 @@ import (
 // グローバル変数なDB
 var DB *gorm.DB
 
+type Room struct {
+	ID               string `json:"id"`
+	Title            string `json:"title"`
+	Author           string `json:"author"`
+	Description      string `json:"description"`
+	Authorized_Users string `json:"authorized_users"`
+	// Play_Time        string `json:"play_time"`
+	// Views            string `json:"views"`
+	// Comments         string `json:"commments"`
+}
+
+type User struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	GoogleSub string `json:"google_sub"`
+}
+
 type DeleteResponse struct {
 	Id string `json:"id"`
 }
@@ -50,7 +67,7 @@ type GoogleInfo struct {
 	Email string `json:"email"`
 }
 
-// 汎用関数
+// --------- General Functions ----------
 func createID() string {
 	t := time.Now()
 	entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
@@ -186,17 +203,7 @@ func extractExt(name string) string {
 	return name[pos:]
 }
 
-// ----------- Room Model --------------
-type Room struct {
-	ID               string `json:"id"`
-	Title            string `json:"title"`
-	Author           string `json:"author"`
-	Description      string `json:"description"`
-	Authorized_Users string `json:"authorized_users"`
-	// Play_Time        string `json:"play_time"`
-	// Views            string `json:"views"`
-	// Comments         string `json:"commments"`
-}
+// --------- Room Operate Functions ----------
 
 // Get Rooms
 func getRooms(w http.ResponseWriter, r *http.Request) {
@@ -355,12 +362,7 @@ func deleteRoom(w http.ResponseWriter, r *http.Request) {
 	w.Write(responseBody)
 }
 
-// ----------- User Model --------------
-type User struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	GoogleSub string `json:"google_sub"`
-}
+// --------- User Operate Functions ----------
 
 // Get All Users
 func getUsers(w http.ResponseWriter, r *http.Request) {
@@ -468,6 +470,8 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(responseBody)
 }
+
+// --------- Other Operate Functions ----------
 
 // Sign In -> 名前loginに変更？
 // tokenから登録判定し、
