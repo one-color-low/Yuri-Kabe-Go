@@ -27,6 +27,8 @@ import (
 	"strings"
 
 	cp "github.com/otiai10/copy"
+
+	"strconv"
 )
 
 // グローバル変数なDB
@@ -39,7 +41,7 @@ type Room struct {
 	Description      string `json:"description"`
 	Authorized_Users string `json:"authorized_users"`
 	// Play_Time        string `json:"play_time"`
-	// Views            string `json:"views"`
+	Views int `json:"views"`
 	// Comments         string `json:"commments"`
 }
 
@@ -289,6 +291,7 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 	room.Title = r.Form.Get("input-title")
 	room.Description = r.Form.Get("input-description")
 	room.Author = user.ID
+	room.Views = 0
 
 	DB.Create(&room)
 
@@ -591,7 +594,26 @@ func upload(w http.ResponseWriter, r *http.Request) {
 
 	redirect_url := "/detail.html?room_id=" + room_id
 	http.Redirect(w, r, redirect_url, http.StatusMovedPermanently)
+}
 
+func countViews(w http.ResponseWriter, r *http.Request) {
+
+	log.Println("countViews")
+	var room Room
+	params := mux.Vars(r)
+
+	room_id := params["id"]
+
+	DB.First(&room, "id = ?", room_id)
+
+	views_after := room.Views + 1
+
+	log.Println("views: " + strconv.Itoa(views_after))
+
+	DB.Model(&room).Where("id = ?", room_id).Updates(
+		map[string]interface{}{
+			"views": views_after,
+		})
 }
 
 func main() {
@@ -622,6 +644,7 @@ func main() {
 			Author:           mock_user_id,
 			Description:      "This is mock data.",
 			Authorized_Users: "'1', '2', '3'",
+			Views:            0,
 		})
 	}
 
@@ -667,6 +690,8 @@ func main() {
 	r.HandleFunc("/api/register", register).Methods("POST") // -> /api/users の POST に統合予定(状況見て判断)
 
 	r.HandleFunc("/api/upload", upload).Methods("POST")
+
+	r.HandleFunc("/api/countViews/{id}", countViews).Methods("GET")
 
 	// 静的ファイルへのルーティング
 	r.Handle("/api/static/room/", http.StripPrefix("/api/static/room", http.FileServer(http.Dir("uploads"))))
