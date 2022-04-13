@@ -207,7 +207,7 @@ func extractExt(name string) string {
 
 // --------- Room Operate Functions ----------
 
-// Get Rooms
+// Get All Searched Rooms
 func getRooms(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("getRooms")
@@ -640,7 +640,7 @@ func main() {
 	if !isRegisteredRoomId(mock_room_id) {
 		DB.Create(&Room{
 			ID:               mock_room_id,
-			Title:            "Room one",
+			Title:            "template room",
 			Author:           mock_user_id,
 			Description:      "This is mock data.",
 			Authorized_Users: "'1', '2', '3'",
@@ -655,7 +655,7 @@ func main() {
 	if !isRegisteredUserId(mock_user_id) {
 		DB.Create(&User{
 			ID:        mock_user_id,
-			Name:      "Yuta",
+			Name:      "Gakki",
 			GoogleSub: "110505856284770188621",
 		})
 	}
