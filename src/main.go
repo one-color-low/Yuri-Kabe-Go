@@ -193,6 +193,9 @@ type Room struct {
 	Author           string `json:"author"`
 	Description      string `json:"description"`
 	Authorized_Users string `json:"authorized_users"`
+	// Play_Time        string `json:"play_time"`
+	// Views            string `json:"views"`
+	// Comments         string `json:"commments"`
 }
 
 // Get Rooms
@@ -281,6 +284,27 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 	room.Author = user.ID
 
 	DB.Create(&room)
+
+	// ここからサムネの保存 ルームファイルにthumbnail.jpgとして保存。
+	fileHandler := r.MultipartForm.File["input-thumbnail"][0]
+
+	file, err := fileHandler.Open()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	dst, err := os.Create(fmt.Sprintf("./uploads/%s/thumbnail.jpg", r.Form.Get("room-id")))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	_, err = io.Copy(dst, file)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	http.Redirect(w, r, "/success.html", http.StatusMovedPermanently)
 }
