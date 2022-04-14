@@ -29,6 +29,9 @@ import (
 	cp "github.com/otiai10/copy"
 
 	"strconv"
+
+	"image/jpeg"
+	"image/png"
 )
 
 // グローバル変数なDB
@@ -258,7 +261,7 @@ func getRoom(w http.ResponseWriter, r *http.Request) {
 // Create a Room
 func createRoom(w http.ResponseWriter, r *http.Request) {
 
-	log.Println("create")
+	log.Println("createRoom")
 
 	err := r.ParseMultipartForm(1024 * 5)
 	if err != nil {
@@ -298,23 +301,51 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 	// ここからサムネの保存 ルームファイルにthumbnail.jpgとして保存。
 	fileHandler := r.MultipartForm.File["input-thumbnail"][0]
 
+	filename := fileHandler.Filename
+	ext := extractExt(filename)
+
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+		msg := "not supported image type"
+		http.Error(w, msg, http.StatusBadRequest)
+		return
+	}
+
 	file, err := fileHandler.Open()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	dst, err := os.Create(fmt.Sprintf("./uploads/%s/thumbnail.jpg", r.Form.Get("room-id")))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	_, err = io.Copy(dst, file)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	opts := &jpeg.Options{Quality: 100}
+
+	if ext == ".jpeg" || ext == ".jpg" {
+
+		_, err = io.Copy(dst, file)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
 	}
+
+	if ext == ".png" {
+
+		img, err := png.Decode(file)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		jpeg.Encode(dst, img, opts)
+	}
+
+	//todo: ここでwebp/gifに対応
 
 	http.Redirect(w, r, "/success.html", http.StatusMovedPermanently)
 }
@@ -579,19 +610,19 @@ func upload(w http.ResponseWriter, r *http.Request) {
 	err = cp.Copy("uploads/template_room", "uploads/"+room_id)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	dst, err := os.Create(fmt.Sprintf("./uploads/%s/static/vmds/motion.vmd", room_id))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	_, err = io.Copy(dst, file)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
