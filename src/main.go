@@ -224,7 +224,7 @@ func getRooms(w http.ResponseWriter, r *http.Request) {
 
 	responseBody, err := json.Marshal(rooms)
 	if err != nil {
-		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -247,7 +247,7 @@ func getRoom(w http.ResponseWriter, r *http.Request) {
 	responseBody, err := json.Marshal(room)
 
 	if err != nil {
-		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -262,7 +262,7 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 
 	err := r.ParseMultipartForm(1024 * 5)
 	if err != nil {
-		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -270,7 +270,7 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 
 	google_info, err := getGoogleInfo(id_token)
 	if err != nil {
-		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	google_sub := google_info.Sub
@@ -281,7 +281,7 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 
 	// 登録ユーザーがいなかった場合
 	if result.RowsAffected == 0 {
-		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -328,7 +328,7 @@ func updateRoom(w http.ResponseWriter, r *http.Request) {
 
 	var room Room
 	if err := json.Unmarshal(reqBody, &room); err != nil {
-		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -340,7 +340,7 @@ func updateRoom(w http.ResponseWriter, r *http.Request) {
 
 	responseBody, err := json.Marshal(room)
 	if err != nil {
-		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -357,7 +357,7 @@ func deleteRoom(w http.ResponseWriter, r *http.Request) {
 
 	responseBody, err := json.Marshal(DeleteResponse{Id: id})
 	if err != nil {
-		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -375,7 +375,7 @@ func getUsers(w http.ResponseWriter, r *http.Request) {
 
 	responseBody, err := json.Marshal(users)
 	if err != nil {
-		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -395,7 +395,7 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 	responseBody, err := json.Marshal(user)
 
 	if err != nil {
-		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -412,7 +412,7 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 
 	// reqBodyがUserの構造体フォーマットになっていない場合はエラーを返す
 	if err := json.Unmarshal(reqBody, &user); err != nil {
-		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -420,7 +420,7 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 
 	responseBody, err := json.Marshal(user)
 	if err != nil {
-		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -437,7 +437,7 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 
 	var user User
 	if err := json.Unmarshal(reqBody, &user); err != nil {
-		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -449,7 +449,7 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 
 	responseBody, err := json.Marshal(user)
 	if err != nil {
-		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -466,7 +466,7 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 
 	responseBody, err := json.Marshal(DeleteResponse{Id: id})
 	if err != nil {
-		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -487,7 +487,7 @@ func signIn(w http.ResponseWriter, r *http.Request) {
 	// tokenからgoogle sub取得
 	err := r.ParseForm()
 	if err != nil {
-		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	id_token := r.Form.Get("credential")
@@ -526,7 +526,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 
 	err := r.ParseMultipartForm(1024 * 5)
 	if err != nil {
-		http.Redirect(w, r, "/failed.html", http.StatusMovedPermanently)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -564,7 +564,12 @@ func upload(w http.ResponseWriter, r *http.Request) {
 
 	ext := extractExt(uploadedFileName)
 	if ext != ".vmd" {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		msg := "this is not vmd file"
+		log.Println(msg)
+
+		http.Error(w, msg, http.StatusBadRequest)
+
 		return
 	}
 
