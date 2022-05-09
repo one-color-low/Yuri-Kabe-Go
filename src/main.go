@@ -29,9 +29,6 @@ import (
 	cp "github.com/otiai10/copy"
 
 	"strconv"
-
-	"image/jpeg"
-	"image/png"
 )
 
 // グローバル変数なDB
@@ -208,6 +205,17 @@ func extractExt(name string) string {
 	return name[pos:]
 }
 
+func getSession(session_id string) *Session {
+	var session Session
+	result := DB.First(&session, "id = ?", session_id)
+
+	if result.RowsAffected != 0 {
+		return &session
+	} else {
+		return nil
+	}
+}
+
 // --------- Room Operate Functions ----------
 
 // Get All Searched Rooms
@@ -263,118 +271,99 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("createRoom")
 
-	err := r.ParseMultipartForm(1024 * 5)
+	// 1. cookieからsession_idの確認＆user_idの取得
+	cookie, err := r.Cookie("_cookie")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		log.Fatal("Cookie: ", err)
 	}
+	session_id := cookie.Value
 
-	id_token := r.Form.Get("credential")
+	session := getSession(session_id)
+	user_id := session.UserID
 
-	google_info, err := getGoogleInfo(id_token)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	google_sub := google_info.Sub
+	log.Println(user_id)
 
-	// google_subでUserテーブルを検索し、特定のUser構造体を取得
-	var user User
-	result := DB.First(&user, "google_sub = ?", google_sub)
+	// 2. Roomレコードの作成
 
-	// 登録ユーザーがいなかった場合
-	if result.RowsAffected == 0 {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	var room Room
-
-	room.ID = r.Form.Get("room-id")
-	room.Title = r.Form.Get("input-title")
-	room.Description = r.Form.Get("input-description")
-	room.Author = user.ID
-	room.Views = 0
-
-	DB.Create(&room)
-
-	// ここからサムネの保存 ルームファイルにthumbnail.jpgとして保存。
-	fileHandler := r.MultipartForm.File["input-thumbnail"][0]
-
-	filename := fileHandler.Filename
-	ext := extractExt(filename)
-
-	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
-		msg := "not supported image type"
-		http.Error(w, msg, http.StatusBadRequest)
-		return
-	}
-
-	file, err := fileHandler.Open()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	dst, err := os.Create(fmt.Sprintf("./uploads/%s/thumbnail.jpg", r.Form.Get("room-id")))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	opts := &jpeg.Options{Quality: 100}
-
-	if ext == ".jpeg" || ext == ".jpg" {
-
-		_, err = io.Copy(dst, file)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-	}
-
-	if ext == ".png" {
-
-		img, err := png.Decode(file)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		jpeg.Encode(dst, img, opts)
-	}
-
-	//todo: ここでwebp/gifに対応
-
-	http.Redirect(w, r, "/success.html", http.StatusMovedPermanently)
-}
-
-// Update a Room
-func updateRoom(w http.ResponseWriter, r *http.Request) {
-
-	vars := mux.Vars(r)
-	id := vars["id"]
+	// jsonでPOSTされた情報をDBにセット
 	reqBody, _ := ioutil.ReadAll(r.Body)
-
 	var room Room
 	if err := json.Unmarshal(reqBody, &room); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	DB.Model(&room).Where("id = ?", id).Updates(
-		map[string]interface{}{
-			"title":  room.Title,
-			"author": room.Author,
-		})
+	// jsonでPOSTされない情報をDBにセット
+	room.ID = createID()
+	room.Author = user_id
+	room.Views = 0
 
-	responseBody, err := json.Marshal(room)
+	// DB作成
+	DB.Create(&room)
+
+	// 3. Room自体の作成
+	err = cp.Copy("uploads/template_room", "uploads/"+room.ID)
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
+	// 4. 作成後の結果をjsonで返す(これでroom_idも含まれる)
+	responseBody, err := json.Marshal(room)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(responseBody)
+
+}
+
+// Update a Room
+func updateRoom(w http.ResponseWriter, r *http.Request) {
+
+	log.Println("updateRoom")
+
+	// 1. cookieからsession_idの確認＆user_idの取得
+	cookie, err := r.Cookie("_cookie")
+	if err != nil {
+		log.Fatal("Cookie: ", err)
+	}
+	session_id := cookie.Value
+
+	session := getSession(session_id)
+	user_id := session.UserID
+
+	log.Println(user_id)
+
+	// 2. Roomの更新(json形式でPOSTされる前提)
+
+	// room_idをurlパラメータから取得
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	// jsonでPOSTされた情報でDB更新
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	var room Room
+	if err := json.Unmarshal(reqBody, &room); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	DB.Model(&room).Where("id = ?", id).Updates(
+		map[string]interface{}{
+			"title":       room.Title,
+			"description": room.Description,
+			"author":      room.Author,
+		},
+	)
+
+	// 3. 更新後の結果をjsonで返す
+	responseBody, err := json.Marshal(room)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(responseBody)
 }
@@ -507,7 +496,6 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 
 // --------- Other Operate Functions ----------
 
-// Sign In -> 名前loginに変更？
 // tokenから登録判定し、
 // 1. 登録されていればセッション作成＆success.htmlにリダイレクト
 // 2. 登録されていなければregister.htmlにリダイレクト
@@ -582,54 +570,71 @@ func upload(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("upload")
 
+	// 1. cookieからsession_idの存在確認＆user_idの取得
+	cookie, err := r.Cookie("_cookie")
+	if err != nil {
+		log.Fatal("Cookie: ", err)
+	}
+	session_id := cookie.Value
+
+	session := getSession(session_id) // これに失敗するとHTTP ERRを返す
+	user_id := session.UserID
+
+	log.Println(user_id)
+
+	// 2. ファイル取得(ParseForm)
 	file, fileHeader, err := r.FormFile("file-input")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
 	defer file.Close()
 
-	uploadedFileName := fileHeader.Filename
-	log.Println(uploadedFileName)
+	// 3. ファイル種別＆room_id取得
+	file_type := r.FormValue("type")
+	room_id := r.FormValue("room_id")
 
-	ext := extractExt(uploadedFileName)
-	if ext != ".vmd" {
+	// 4. ファイル保存
+	if file_type == "motion" {
 
-		msg := "this is not vmd file"
-		log.Println(msg)
+		uploadedFileName := fileHeader.Filename
 
-		http.Error(w, msg, http.StatusBadRequest)
+		// アップロードファイルのバリデーション
+		ext := extractExt(uploadedFileName)
+		if ext != ".vmd" {
 
-		return
+			msg := "this is not vmd file"
+			log.Println(msg)
+
+			http.Error(w, msg, http.StatusBadRequest)
+
+			return
+		}
+
+		// 保存実行
+		dst, err := os.Create(fmt.Sprintf("./uploads/%s/static/vmds/motion.vmd", room_id))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		_, err = io.Copy(dst, file)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		log.Println("motion upload ok")
+
+	} else if file_type == "thumbnail" {
+
+		log.Println("thumbnail upload ok")
+
 	}
-
-	room_id := createID()
-	log.Println(room_id)
-
-	err = cp.Copy("uploads/template_room", "uploads/"+room_id)
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	dst, err := os.Create(fmt.Sprintf("./uploads/%s/static/vmds/motion.vmd", room_id))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	_, err = io.Copy(dst, file)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	log.Println("upload ok")
 
 	redirect_url := "/detail.html?room_id=" + room_id
 	http.Redirect(w, r, redirect_url, http.StatusMovedPermanently)
+
 }
 
 func countViews(w http.ResponseWriter, r *http.Request) {
