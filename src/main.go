@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"image/jpeg"
+	"image/png"
 	"log"
 	"net/http"
 
@@ -635,7 +637,60 @@ func upload(w http.ResponseWriter, r *http.Request) {
 
 	} else if file_type == "thumbnail" {
 
+		log.Println("thubnail save start")
+
+		fileHandler := r.MultipartForm.File["file-input"][0]
+
+		filename := fileHandler.Filename
+		ext := extractExt(filename)
+
+		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+			msg := "not supported image type"
+			http.Error(w, msg, http.StatusBadRequest)
+			return
+		}
+
+		file, err := fileHandler.Open()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		dst, err := os.Create(fmt.Sprintf("./uploads/%s/thumbnail.jpg", room_id))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		opts := &jpeg.Options{Quality: 100}
+
+		if ext == ".jpeg" || ext == ".jpg" {
+
+			_, err = io.Copy(dst, file)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
+		}
+
+		if ext == ".png" {
+
+			img, err := png.Decode(file) //pngはjpegに変換して保存
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			jpeg.Encode(dst, img, opts)
+		}
+
 		log.Println("thumbnail upload ok")
+
+	} else {
+
+		http.Error(w, err.Error(), http.StatusBadRequest) // file not supported とか返したい
+		return
 
 	}
 
