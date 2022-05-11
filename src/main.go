@@ -285,13 +285,16 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 
 	// 2. Roomレコードの作成
 
-	// jsonでPOSTされた情報をDBにセット
+	// formでPOSTされた情報をDBにセット
 	reqBody, _ := ioutil.ReadAll(r.Body)
+
 	var room Room
 	if err := json.Unmarshal(reqBody, &room); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	log.Println(room.Author)
 
 	// jsonでPOSTされない情報をDBにセット
 	room.ID = createID()
@@ -342,6 +345,8 @@ func updateRoom(w http.ResponseWriter, r *http.Request) {
 	// room_idをurlパラメータから取得
 	vars := mux.Vars(r)
 	id := vars["id"]
+
+	log.Println(id)
 
 	// jsonでPOSTされた情報でDB更新
 	reqBody, _ := ioutil.ReadAll(r.Body)
@@ -591,8 +596,10 @@ func upload(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	// 3. ファイル種別＆room_id取得
-	file_type := r.FormValue("type")
-	room_id := r.FormValue("room_id")
+	file_type := r.FormValue("file_type")
+	room_id := r.FormValue("room_id") //こいつが動いてない = upload APIへのurlが間違ってる。
+
+	log.Println("room_id is ", room_id)
 
 	// 4. ファイル保存
 	if file_type == "motion" {
