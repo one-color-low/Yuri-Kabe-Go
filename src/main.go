@@ -45,6 +45,7 @@ type Room struct {
 	// Play_Time        string `json:"play_time"`
 	Views int `json:"views"`
 	// Comments         string `json:"commments"`
+	Status string `json:"status"`
 }
 
 type User struct {
@@ -230,7 +231,7 @@ func getRooms(w http.ResponseWriter, r *http.Request) {
 	var query = r.URL.Query() //クエリパラメータの取得
 
 	if query != nil && query["search_word"] != nil {
-		DB.Where("title LIKE ?", "%"+query["search_word"][0]+"%").Find(&rooms) //部分一致検索
+		DB.Where("title LIKE ?", "%"+query["search_word"][0]+"%").Where("status = ?", "public").Find(&rooms) //部分一致検索
 	} else {
 		DB.Find(&rooms) //すべて出力
 	}
@@ -305,6 +306,7 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 	room.ID = createID()
 	room.Author = user_id
 	room.Views = 0
+	room.Status = "private"
 
 	// DB作成
 	DB.Create(&room)
@@ -360,10 +362,13 @@ func updateRoom(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	room.Status = "public"
+	// todo: room構造体に要素が存在する場合のみアップデートするようにしたい(ただし要素が空白でもアップデート)
 	DB.Model(&room).Where("id = ?", id).Updates(
 		map[string]interface{}{
 			"title":       room.Title,
 			"description": room.Description,
+			"status":      room.Status,
 		},
 	)
 
@@ -750,6 +755,7 @@ func main() {
 			Description:      "This is mock data.",
 			Authorized_Users: "'1', '2', '3'",
 			Views:            0,
+			Status:           "public",
 		})
 	}
 
