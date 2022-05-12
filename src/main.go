@@ -361,7 +361,6 @@ func updateRoom(w http.ResponseWriter, r *http.Request) {
 		map[string]interface{}{
 			"title":       room.Title,
 			"description": room.Description,
-			"author":      room.Author,
 		},
 	)
 
@@ -694,8 +693,8 @@ func upload(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	redirect_url := "/detail.html?room_id=" + room_id
-	http.Redirect(w, r, redirect_url, http.StatusMovedPermanently)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(room_id))
 
 }
 
