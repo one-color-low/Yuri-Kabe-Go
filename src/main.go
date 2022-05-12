@@ -275,9 +275,12 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 
 	// 1. cookieからsession_idの確認＆user_idの取得
 	cookie, err := r.Cookie("_cookie")
+
 	if err != nil {
-		log.Fatal("Cookie: ", err)
+		http.Error(w, fmt.Sprintf("Error. You are not login: %v", err), http.StatusBadRequest)
+		return
 	}
+
 	session_id := cookie.Value
 
 	session := getSession(session_id)
@@ -292,7 +295,7 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 
 	var room Room
 	if err := json.Unmarshal(reqBody, &room); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("Error. Unsupported json request: %v", err), http.StatusBadRequest)
 		return
 	}
 
@@ -310,14 +313,14 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 	err = cp.Copy("uploads/template_room", "uploads/"+room.ID)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("Error Room does not exist: %v", err), http.StatusBadRequest)
 		return
 	}
 
 	// 4. 作成後の結果をjsonで返す(これでroom_idも含まれる)
 	responseBody, err := json.Marshal(room)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
