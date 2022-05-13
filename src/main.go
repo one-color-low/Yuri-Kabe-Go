@@ -72,6 +72,11 @@ type GoogleInfo struct {
 	Email string `json:"email"`
 }
 
+type RoomConfig struct {
+	ModelType  string `json:"modelType"`
+	MotionType string `json:"motionType"`
+}
+
 // --------- General Functions ----------
 func createID() string {
 	t := time.Now()
@@ -217,6 +222,60 @@ func getSession(session_id string) *Session {
 	} else {
 		return nil
 	}
+}
+
+func writeLineText(file_path string, write_text string) string {
+	f, err := os.OpenFile(file_path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666) //存在すれば追記、存在しなければ作成
+	if err != nil {
+		log.Println(err)
+		return "Failed. file_path not valid."
+	}
+	defer f.Close()
+	fmt.Fprintln(f, write_text) //書き込み
+	return "Success"
+}
+
+func updateRoomConfigJson(json_path string, change_item string, change_content string) string {
+
+	// 1. 今の設定を読み出し、RoomConfig構造体に入れる
+	jsonFromFile, err := ioutil.ReadFile(json_path)
+	if err != nil {
+		log.Println(err)
+		return "Error. Invalid path."
+	}
+	var room_config RoomConfig
+	err = json.Unmarshal(jsonFromFile, &room_config)
+	if err != nil {
+		log.Println(err)
+		return "Error. Invalid format."
+	}
+
+	// 2. 新しいConfigでアップデート
+	if change_item == "model" {
+		room_config.ModelType = change_content
+	} else if change_item == "motion" {
+		room_config.MotionType = change_content
+	} else {
+		return "Error. change_item not found."
+	}
+
+	// 3. 新しいRoomConfig構造体をjsonにして書き込み
+	jsonStr, err := json.Marshal(room_config)
+	log.Println(string(jsonStr))
+	if err != nil {
+		fmt.Println(err)
+		return "Error."
+	}
+	f, err := os.Create(json_path)
+	if err != nil {
+		fmt.Println(err)
+		return "Error."
+	}
+	defer f.Close()
+	f.Write(jsonStr)
+
+	return "Success"
+
 }
 
 // --------- Room Operate Functions ----------
@@ -641,6 +700,46 @@ func upload(w http.ResponseWriter, r *http.Request) {
 		}
 
 		log.Println("motion upload ok")
+
+	} else if file_type == "model" {
+
+		uploadedFileName := fileHeader.Filename
+
+		log.Println(uploadedFileName)
+
+		// アップロードファイルのバリデーション
+		ext := extractExt(uploadedFileName)
+
+		if ext != ".pmd" && ext != ".pmx" {
+
+			msg := "this is not supported model file"
+			log.Println(msg)
+
+			http.Error(w, msg, http.StatusBadRequest)
+
+			return
+		}
+
+		updateRoomConfigJson(
+			fmt.Sprintf("./uploads/%s/config.json", room_id),
+			"model",
+			ext,
+		)
+
+		// 保存実行
+		dst, err := os.Create(fmt.Sprintf("./uploads/%s/static/models/default/default"+ext, room_id))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		_, err = io.Copy(dst, file)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		log.Println("model upload ok")
 
 	} else if file_type == "thumbnail" {
 
