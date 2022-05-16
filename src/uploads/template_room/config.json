@@ -2,5 +2,7 @@
     "ModelType" : ".pmd",
     "ModelName" : "default/default.pmd",
     "MotionType" : ".vmd",
-    "MotionName" : "default.vmd"
+    "MotionName" : "default.vmd",
+    "AudioType" : "mp3",
+    "AudioName" : "default.mp3"
 }

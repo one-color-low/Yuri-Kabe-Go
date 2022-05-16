@@ -77,6 +77,8 @@ type RoomConfig struct {
 	ModelName  string `json:"ModelName"`
 	MotionType string `json:"MotionType"`
 	MotionName string `json:"MotionName"`
+	AudioType  string `json:"AudioType"`
+	AudioName  string `json:"AudioName"`
 }
 
 // --------- General Functions ----------
@@ -280,6 +282,10 @@ func updateRoomConfigJson(json_path string, change_item string, change_content s
 		room_config.MotionType = change_content
 	} else if change_item == "MotionName" {
 		room_config.MotionName = change_content
+	} else if change_item == "AudioType" {
+		room_config.AudioType = change_content
+	} else if change_item == "AudioName" {
+		room_config.AudioName = change_content
 	} else {
 		return "Error. change_item not found."
 	}
@@ -853,6 +859,43 @@ func upload(w http.ResponseWriter, r *http.Request) {
 		}
 
 		log.Println("thumbnail upload ok")
+
+	} else if file_type == "audio" {
+		log.Println("audio save start")
+
+		fileHandler := r.MultipartForm.File["file-input"][0]
+
+		filename := fileHandler.Filename
+		ext := extractExt(filename)
+
+		if ext != ".mp3" {
+			msg := "not supported audio type"
+			log.Println(msg)
+			http.Error(w, msg, http.StatusBadRequest)
+			return
+		}
+
+		dst, err := os.Create(fmt.Sprintf("./uploads/%s/static/audio/uploaded.mp3", room_id))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			log.Println("create error")
+			return
+		}
+
+		_, err = io.Copy(dst, file)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			log.Println("copy error")
+			return
+		}
+
+		updateRoomConfigJson(
+			fmt.Sprintf("./uploads/%s/config.json", room_id),
+			"AudioName",
+			"uploaded.mp3",
+		)
+
+		log.Println("audio upload ok")
 
 	} else {
 

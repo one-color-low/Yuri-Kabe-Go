@@ -44,6 +44,7 @@
 
                 console.log("model name is: ", jsondata.ModelName)
                 console.log("motion name is: ", jsondata.MotionName)
+                console.log("audio name is: ", jsondata.AudioName)
 
                 var container, stats;
 
@@ -57,6 +58,8 @@
                 var backgroundFile = path_prefix+'/static/backgrounds/mori.jpg';
                 var modelFile = path_prefix+'/static/models/'+jsondata.ModelName;
                 var vmdFiles = path_prefix+'/static/motions/'+jsondata.MotionName; 
+                var audioFile = path_prefix+'/static/audio/'+jsondata.AudioName;
+                var audioParams = { delayTime: 160 * 1 / 30 };
 
                 Ammo().then(function (AmmoLib) {
 
@@ -108,6 +111,8 @@
                     // 3D空間に背景メッシュを追加
                     scene.add(background_mesh);
 
+                    const listener = new THREE.AudioListener();
+
 
                     //
 
@@ -147,13 +152,27 @@
 
                         mesh = mmd.mesh;
                         mesh.position.y = - 10;
-                        scene.add(mesh);
+
+                        //scene.add(mesh);
 
                         helper.add(mesh, {
                             animation: mmd.animation,
                             physics: false
                         });
 
+                        // オーディオのロード
+                        new THREE.AudioLoader().load( audioFile, function ( buffer ) {
+
+                            const audio = new THREE.Audio( listener ).setBuffer( buffer );
+
+                            helper.add( audio, audioParams );
+                            scene.add( mesh );
+
+                            ready = true;
+
+                        }, onProgress, null );
+            
+                        // その他
                         ikHelper = helper.objects.get(mesh).ikSolver.createHelper();
                         ikHelper.visible = false;
                         scene.add(ikHelper);
