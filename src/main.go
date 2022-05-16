@@ -712,7 +712,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 保存実行
-		dst, err := os.Create(fmt.Sprintf("./uploads/%s/static/vmds/motion.vmd", room_id))
+		dst, err := os.Create(fmt.Sprintf("./uploads/%s/static/motions/uploaded.vmd", room_id))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -734,8 +734,6 @@ func upload(w http.ResponseWriter, r *http.Request) {
 
 		// アップロードファイルのバリデーション
 		ext := extractExt(uploadedFileName)
-
-		// todo: zip判定に
 		if ext != ".zip" {
 			msg := "This is not zip file."
 			log.Println(msg)
@@ -785,14 +783,16 @@ func upload(w http.ResponseWriter, r *http.Request) {
 			msg := "Zip file uploaded, but not contain supported model file."
 			http.Error(w, msg, http.StatusBadRequest)
 		}
-
 		updateRoomConfigJson(
 			fmt.Sprintf("./uploads/%s/config.json", room_id),
 			"ModelName",
-			found_filename,
+			"uploaded/"+found_filename,
 		)
-
-		// todo: index.htmlでfound_filenameを見るように
+		updateRoomConfigJson(
+			fmt.Sprintf("./uploads/%s/config.json", room_id),
+			"ModelType",
+			found_ext,
+		)
 
 		log.Println("model upload ok")
 

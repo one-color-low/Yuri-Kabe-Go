@@ -43,7 +43,7 @@
                 console.log(jsondata)
 
                 console.log("model name is: ", jsondata.ModelName)
-                console.log("motion type is: ", jsondata.MotionType)
+                console.log("motion name is: ", jsondata.MotionName)
 
                 var container, stats;
 
@@ -55,8 +55,8 @@
                 var clock = new THREE.Clock();
 
                 var backgroundFile = path_prefix+'/static/backgrounds/mori.jpg';
-                var modelFile = path_prefix+'/static/models/uploaded/'+jsondata.ModelName;
-                var vmdFiles = path_prefix+'/static/vmds/motion'+jsondata.MotionType; 
+                var modelFile = path_prefix+'/static/models/'+jsondata.ModelName;
+                var vmdFiles = path_prefix+'/static/motions/'+jsondata.MotionName; 
 
                 Ammo().then(function (AmmoLib) {
 
