@@ -675,7 +675,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 	}
 	session_id := cookie.Value
 
-	session := getSession(session_id) // これに失敗するとHTTP ERRを返す
+	session := getSession(session_id)
 	user_id := session.UserID
 
 	log.Println(user_id)
@@ -690,7 +690,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 
 	// 3. ファイル種別＆room_id取得
 	file_type := r.FormValue("file_type")
-	room_id := r.FormValue("room_id") //こいつが動いてない = upload APIへのurlが間違ってる。
+	room_id := r.FormValue("room_id")
 
 	log.Println("room_id is ", room_id)
 
@@ -725,6 +725,12 @@ func upload(w http.ResponseWriter, r *http.Request) {
 		}
 
 		log.Println("motion upload ok")
+
+		updateRoomConfigJson(
+			fmt.Sprintf("./uploads/%s/config.json", room_id),
+			"MotionName",
+			"uploaded.vmd",
+		)
 
 	} else if file_type == "model" {
 
