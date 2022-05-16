@@ -73,8 +73,10 @@ type GoogleInfo struct {
 }
 
 type RoomConfig struct {
-	ModelType  string `json:"modelType"`
-	MotionType string `json:"motionType"`
+	ModelType  string `json:"ModelType"`
+	ModelName  string `json:"ModelName"`
+	MotionType string `json:"MotionType"`
+	MotionName string `json:"MotionName"`
 }
 
 // --------- General Functions ----------
@@ -85,6 +87,7 @@ func createID() string {
 	return id.String()
 }
 
+// todo: ファイルパスではなくポインタを渡すように
 func unzip(zipFilePath string, outputPath string) {
 	dst := outputPath
 	archive, err := zip.OpenReader(zipFilePath)
@@ -127,6 +130,24 @@ func unzip(zipFilePath string, outputPath string) {
 		dstFile.Close()
 		fileInArchive.Close()
 	}
+}
+
+func dirwalk(dir string) []string {
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		panic(err)
+	}
+
+	var paths []string
+	for _, file := range files {
+		if file.IsDir() {
+			paths = append(paths, dirwalk(filepath.Join(dir, file.Name()))...)
+			continue
+		}
+		paths = append(paths, filepath.Join(dir, file.Name()))
+	}
+
+	return paths
 }
 
 func createSession(userID string) Session {
@@ -251,10 +272,14 @@ func updateRoomConfigJson(json_path string, change_item string, change_content s
 	}
 
 	// 2. 新しいConfigでアップデート
-	if change_item == "model" {
+	if change_item == "ModelType" {
 		room_config.ModelType = change_content
-	} else if change_item == "motion" {
+	} else if change_item == "ModelName" {
+		room_config.ModelName = change_content
+	} else if change_item == "MotionType" {
 		room_config.MotionType = change_content
+	} else if change_item == "MotionName" {
+		room_config.MotionName = change_content
 	} else {
 		return "Error. change_item not found."
 	}
@@ -710,9 +735,9 @@ func upload(w http.ResponseWriter, r *http.Request) {
 		// アップロードファイルのバリデーション
 		ext := extractExt(uploadedFileName)
 
-		if ext != ".pmd" && ext != ".pmx" {
-
-			msg := "this is not supported model file"
+		// todo: zip判定に
+		if ext != ".zip" {
+			msg := "This is not zip file."
 			log.Println(msg)
 
 			http.Error(w, msg, http.StatusBadRequest)
@@ -720,24 +745,54 @@ func upload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		updateRoomConfigJson(
-			fmt.Sprintf("./uploads/%s/config.json", room_id),
-			"model",
-			ext,
-		)
-
 		// 保存実行
-		dst, err := os.Create(fmt.Sprintf("./uploads/%s/static/models/default/default"+ext, room_id))
+		zipInputPath := fmt.Sprintf("./uploads/%s/static/models/uploaded.zip", room_id)
+		zipOutputPath := fmt.Sprintf("./uploads/%s/static/models/uploaded/", room_id)
+
+		dst, err := os.Create(zipInputPath)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-
 		_, err = io.Copy(dst, file)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+
+		// unzip
+		unzip(zipInputPath, zipOutputPath)
+
+		// zipOutputPathにあるファイルの拡張子取得 ＆ 判定 ＆ 設定ファイルに保存
+		paths := dirwalk(zipOutputPath)
+		found_ext := ""
+		found_filename := ""
+		for i := 0; i < len(paths); i++ {
+			ext := extractExt(paths[i])
+			if ext == ".pmd" {
+				found_ext = ext
+				found_filename_arr := strings.Split(paths[i], "/")
+				found_filename = found_filename_arr[len(found_filename_arr)-1]
+				break
+			} else if ext == ".pmx" {
+				found_ext = ext
+				found_filename_arr := strings.Split(paths[i], "/")
+				found_filename = found_filename_arr[len(found_filename_arr)-1]
+				break
+			}
+		}
+		if found_ext != ".pmd" && found_ext != ".pmx" {
+			msg := "Zip file uploaded, but not contain supported model file."
+			http.Error(w, msg, http.StatusBadRequest)
+		}
+
+		updateRoomConfigJson(
+			fmt.Sprintf("./uploads/%s/config.json", room_id),
+			"ModelName",
+			found_filename,
+		)
+
+		// todo: index.htmlでfound_filenameを見るように
 
 		log.Println("model upload ok")
 

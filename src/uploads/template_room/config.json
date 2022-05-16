@@ -1,4 +1,6 @@
 {
-    "modelType" : ".pmd",
-    "motionType" : ".vmd"
+    "ModelType" : ".pmd",
+    "ModelName" : "default.pmd",
+    "MotionType" : ".vmd",
+    "MotionName" : "motion.vmd"
 }
