@@ -773,10 +773,15 @@ func upload(w http.ResponseWriter, r *http.Request) {
 		// unzip
 		unzip(zipInputPath, zipOutputPath)
 
+		//__MACOSXの削除
+		os.RemoveAll(zipOutputPath + "__MACOSX")
+
 		// zipOutputPathにあるファイルの拡張子取得 ＆ 判定 ＆ 設定ファイルに保存
 		paths := dirwalk(zipOutputPath)
+
 		found_ext := ""
 		found_filename := ""
+
 		for i := 0; i < len(paths); i++ {
 			ext := extractExt(paths[i])
 			if ext == ".pmd" {
