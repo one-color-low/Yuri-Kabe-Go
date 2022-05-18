@@ -42,9 +42,9 @@
 
                 console.log(jsondata)
 
-                console.log("model name is: ", jsondata.ModelName)
-                console.log("motion name is: ", jsondata.MotionName)
-                console.log("audio name is: ", jsondata.AudioName)
+                console.log("model name is: ", jsondata.Models[0].Name)
+                console.log("motion name is: ", jsondata.Models[0].Motion.Name)
+                console.log("audio name is: ", jsondata.Audio.Name)
 
                 var container, stats;
 
@@ -55,10 +55,9 @@
 
                 var clock = new THREE.Clock();
 
-                var backgroundFile = path_prefix+'/static/backgrounds/mori.jpg';
-                var modelFile = path_prefix+'/static/models/'+jsondata.ModelName;
-                var vmdFiles = path_prefix+'/static/motions/'+jsondata.MotionName; 
-                var audioFile = path_prefix+'/static/audio/'+jsondata.AudioName;
+                var modelFile = path_prefix+'/static/models/'+jsondata.Models[0].Name;
+                var vmdFiles = path_prefix+'/static/motions/'+jsondata.Models[0].Motion.Name; 
+                var audioFile = path_prefix+'/static/audio/'+jsondata.Audio.Name;
                 var audioParams = { delayTime: 160 * 1 / 30 };
 
                 Ammo().then(function (AmmoLib) {
@@ -94,22 +93,6 @@
                     var directionalLight = new THREE.DirectionalLight(0x887766, 1);
                     directionalLight.position.set(- 1, 1, 1).normalize();
                     scene.add(directionalLight);
-
-                    // 背景画像を読み込む
-                    const textureLoader = new THREE.TextureLoader();
-                    const texture = textureLoader.load(backgroundFile);
-
-                    // 反射の強いマテリアルにする
-                    const material = new THREE.MeshPhongMaterial({
-                        map: texture
-                    });
-                    const geometry = new THREE.BoxGeometry(100, 80, 1)
-                    // 背景メッシュを作成
-                    const background_mesh = new THREE.Mesh(geometry, material);
-                    background_mesh.position.z = -15
-                    background_mesh.position.y = +10
-                    // 3D空間に背景メッシュを追加
-                    scene.add(background_mesh);
 
                     const listener = new THREE.AudioListener();
 
@@ -147,6 +130,49 @@
                     });
 
                     var loader = new MMDLoader();
+
+                    // --------- Stage ------------
+                    if(jsondata.Stage.Type == "3d"){
+
+                        var stage3dFiles = [];
+                        for (const elem of jsondata.Stage.Stage_3d.Names) {
+                            stage3dFiles.push(path_prefix+'/static/stage/3d/'+elem)
+                        }
+
+                        for (const elem of stage3dFiles) {
+                            console.log(elem)
+                            loader.load(
+                                elem, 
+                                function(mesh){
+                                    scene.add(mesh)
+                                }
+                            )
+                        }
+
+                    } else if(jsondata.Stage.Type == "2d") {
+
+                        var backgroundFile = path_prefix+'/static/stage/2d/'+jsondata.Stage.Stage_2d.Name;
+                        // 背景画像を読み込む
+                        const textureLoader = new THREE.TextureLoader();
+                        const texture = textureLoader.load(backgroundFile);
+
+                        // 反射の強いマテリアルにする
+                        const material = new THREE.MeshPhongMaterial({
+                            map: texture
+                        });
+                        const geometry = new THREE.BoxGeometry(100, 80, 1)
+                        
+                        // 背景メッシュを作成
+                        const background_mesh = new THREE.Mesh(geometry, material);
+                        background_mesh.position.z = -15
+                        background_mesh.position.y = +10
+
+                        // 3D空間に背景メッシュを追加
+                        scene.add(background_mesh);
+                        
+                    }
+
+
 
                     loader.loadWithAnimation(modelFile, vmdFiles, function (mmd) {
 

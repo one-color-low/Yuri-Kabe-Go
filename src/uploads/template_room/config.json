@@ -1,8 +1,40 @@
 {
-    "ModelType" : ".pmd",
-    "ModelName" : "default/default.pmd",
-    "MotionType" : ".vmd",
-    "MotionName" : "default.vmd",
-    "AudioType" : "mp3",
-    "AudioName" : "default.mp3"
+	
+	"Models" : [
+		{
+			"Type" : ".pmd",
+			"Name" : "default/default.pmd",
+			"Motion" : {
+				"Type" : ".vmd",
+				"Name" : "default.vmd"
+			}
+		}
+    ],
+	
+	"Stage" : {
+		"Type" : "3d",
+		"Stage_2d" : {
+			"Type" : ".jpg",
+			"Name" : "default.jpg"
+		},
+		"Stage_3d" : {
+			"Type" : ".pmx",
+			"Names" : [
+				"default/Dome_TP301.pmx", 
+				"default/Dome_TP302.pmx",
+				"default/Dome_TP303.pmx"
+			]
+		}
+	},
+	
+	"Audio" : {
+		"Type" : ".mp3",
+		"Name" : "default.mp3"
+	},
+	
+	"Camera" : {
+		"Type" : "none",
+		"Name" : "default.vmd"
+	}
+
 }
