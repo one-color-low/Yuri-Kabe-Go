@@ -84,7 +84,7 @@
                     scene.background = new THREE.Color(0xffffff);
 
                     var gridHelper = new THREE.PolarGridHelper(30, 10);
-                    gridHelper.position.y = - 10;
+                    gridHelper.position.y = 0;
                     scene.add(gridHelper);
 
                     var ambient = new THREE.AmbientLight(0x666666, 1.5);
@@ -177,7 +177,7 @@
                     loader.loadWithAnimation(modelFile, vmdFiles, function (mmd) {
 
                         mesh = mmd.mesh;
-                        mesh.position.y = - 10;
+                        mesh.position.y = 0;
 
                         //scene.add(mesh);
 
