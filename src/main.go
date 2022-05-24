@@ -736,7 +736,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 	session := getSession(session_id)
 	user_id := session.UserID
 
-	log.Println(user_id)
+	log.Println(user_id) //todo: user_idでroomの編集権限があるか確認
 
 	// 2. ファイル取得(ParseForm)
 	file, fileHeader, err := r.FormFile("file-input")
